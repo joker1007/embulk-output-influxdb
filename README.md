@@ -1,6 +1,4 @@
-# Influxdb output plugin for Embulk
-
-TODO: Write short description here and embulk-output-influxdb.gemspec file.
+# InfluxDB output plugin for Embulk
 
 ## Overview
 
@@ -8,20 +6,42 @@ TODO: Write short description here and embulk-output-influxdb.gemspec file.
 * **Load all or nothing**: no
 * **Resume supported**: no
 * **Cleanup supported**: yes
+* **Dynamic Database creating**: yes
+* **Dynamic Series creating**: yes
 
 ## Configuration
 
-- **option1**: description (integer, required)
-- **option2**: description (string, default: `"myvalue"`)
-- **option3**: description (string, default: `null`)
+- **host**: hostname (string, default: localhost)
+- **port**: port number (integer, default: 8086)
+- **username**: username (string, default: 'root')
+- **password**: password (string, default: 'root')
+- **database**: database name (string, required)
+- **series**:    series name (string, required) (can use column value placeholder. see example)
+- **mode**:     "insert", or "replace". See bellow. (string, default: insert)
+- **timestamp_column**: timestamp column (string, default: nil)
+- **ignore_columns**: ignore column names (array[string], default: nil)
+- **default_timezone**: default timezone for column (string, default: 'UTC')
+
+### Modes
+
+* **insert**:
+  * Behavior: This mode inserts rows simplly.
+* **replace**:
+  * Behavior: Same with insert mode excepting that it drops the target series first.
 
 ## Example
 
 ```yaml
 out:
   type: influxdb
-  option1: example1
-  option2: example2
+  username: root
+  password: root
+  database: dbname
+  series: ${key_name}_series
+  timestamp_column: day
+  mode: replace
+  ignore_columns:
+    - key_name
 ```
 
 
