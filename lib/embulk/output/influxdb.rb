@@ -1,4 +1,5 @@
 require 'influxdb'
+require 'timezone'
 
 module Embulk
   module Output
@@ -18,6 +19,7 @@ module Embulk
           "series" => config.param("series", :string),
           "timestamp_column" => config.param("timestamp_column", :string, default: nil),
           "ignore_columns" => config.param("ignore_columns", :array, default: []),
+          "default_timezone" => config.param("default_timezone", :string, default: "UTC"),
           "mode" => config.param("mode", :string, default: "insert"),
           "use_ssl" => config.param("use_ssl", :bool, default: false),
           "verify" => config.param("verify_ssl", :bool, default: true),
@@ -58,10 +60,10 @@ module Embulk
         @time_precision = task["time_precision"]
         @replace = task["mode"].downcase == "replace"
         @replaced_measurements = {}
+        @default_timezone = task["default_timezone"]
 
-        connection_opts = task.reject { |k, _| ["database", "series", "timestamp_column"] }
         @connection = InfluxDB::Client.new(@database,
-          connection_opts.map { |k, v| [k.to_sym, v] }.to_h
+          task.map { |k, v| [k.to_sym, v] }.to_h
         )
         create_database_if_not_exist
       end
@@ -86,10 +88,10 @@ module Embulk
           payload = {
             series: series,
             values: Hash[
-              target_columns.map { |col| [col.name, record[col.index]] }
+              target_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
             ],
           }
-          payload[:timestamp] = record[timestamp_column.index].to_i if timestamp_column
+          payload[:timestamp] = convert_timezone(record[timestamp_column.index]).to_i if timestamp_column
           payload
         end
 
@@ -129,6 +131,13 @@ module Embulk
         schema.reject do |col|
           col.name == @timestamp_column || @ignore_columns.include?(col.name)
         end
+      end
+
+      def convert_timezone(value)
+        return value unless value.is_a?(Time)
+
+        timezone = Timezone::Zone.new(zone: @default_timezone)
+        timezone.time(value)
       end
     end
   end
