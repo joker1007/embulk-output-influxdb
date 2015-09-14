@@ -1,0 +1,21 @@
+in:
+  type: file
+  path_prefix: example.csv
+  parser:
+    type: csv
+    skip_header_lines: 1
+    columns:
+      - {name: key_name, type: string}
+      - {name: day, type: timestamp, format: '%Y-%m-%d'}
+      - {name: value, type: long}
+
+out:
+  type: influxdb
+  username: root
+  password: root
+  database: dbname
+  series: ${key_name}_series
+  timestamp_column: day
+  mode: replace
+  ignore_columns:
+    - key_name
