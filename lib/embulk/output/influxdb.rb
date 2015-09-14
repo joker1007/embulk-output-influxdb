@@ -16,7 +16,8 @@ module Embulk
           "username" => config.param("username", :string, default: "root"),
           "password" => config.param("password", :string, default: "root"),
           "database" => config.param("database", :string),
-          "series" => config.param("series", :string),
+          "series" => config.param("series", :string, default: nil),
+          "series_per_column" => config.param("series_per_column", :bool, default: false),
           "timestamp_column" => config.param("timestamp_column", :string, default: nil),
           "ignore_columns" => config.param("ignore_columns", :array, default: []),
           "default_timezone" => config.param("default_timezone", :string, default: "UTC"),
@@ -55,7 +56,13 @@ module Embulk
         # initialization code:
         @database = task["database"]
         @series = task["series"]
-        @timestamp_column = task["timestamp_column"]
+        @series_per_column = task["series_per_column"]
+        unless @series || @series_per_column
+          raise "Need series or series_per_column parameter"
+        end
+        if task["timestamp_column"]
+          @timestamp_column = schema.find { |col| col.name == task["timestamp_column"] }
+        end
         @ignore_columns = task["ignore_columns"]
         @time_precision = task["time_precision"]
         @replace = task["mode"].downcase == "replace"
@@ -72,28 +79,7 @@ module Embulk
       end
 
       def add(page)
-        if @timestamp_column
-          timestamp_column = schema.find { |col| col.name == @timestamp_column }
-        else
-          timestamp_column = nil
-        end
-
-        data = page.map do |record|
-          series = resolve_placeholder(record, @series)
-          if @replace && @replaced_measurements[series].nil?
-            Embulk.logger.info { "embulk-output-influxdb: Drop measurement #{series} from #{@database}" }
-            @replaced_measurements[series] = true
-            @connection.query("DROP MEASUREMENT #{series}")
-          end
-          payload = {
-            series: series,
-            values: Hash[
-              target_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
-            ],
-          }
-          payload[:timestamp] = convert_timezone(record[timestamp_column.index]).to_i if timestamp_column
-          payload
-        end
+        data = @series ? build_payload(page) : build_payload_per_column(page)
 
         Embulk.logger.info { "embulk-output-influxdb: Writing to #{@database}" }
         Embulk.logger.debug { "embulk-output-influxdb: #{data}" }
@@ -114,6 +100,48 @@ module Embulk
 
       private
 
+      def build_payload(page)
+        data = page.map do |record|
+          series = resolve_placeholder(record, @series)
+          drop_measurement_if_exist(series)
+          payload = {
+            series: series,
+            values: Hash[
+              target_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
+            ],
+          }
+          payload[:timestamp] = convert_timezone(record[@timestamp_column.index]).to_i if @timestamp_column
+          payload
+        end
+      end
+
+      def build_payload_per_column(page)
+        page.flat_map do |record|
+          target_columns.map do |col|
+            series = col.name
+            drop_measurement_if_exist(series)
+            payload = {
+              series: series,
+              values: {value: record[col.index]},
+            }
+            payload[:timestamp] = convert_timezone(record[@timestamp_column.index]).to_i if @timestamp_column
+            payload
+          end
+        end
+      end
+
+      def drop_measurement_if_exist(series)
+        if @replace && @replaced_measurements[series].nil? && find_measurement(series)
+          Embulk.logger.info { "embulk-output-influxdb: Drop measurement #{series} from #{@database}" }
+          @replaced_measurements[series] = true
+          @connection.query("DROP MEASUREMENT #{series}")
+        end
+      end
+
+      def find_measurement(series)
+        @connection.query("SHOW MEASUREMENTS")[0]["values"].find { |v| v["name"] == series }
+      end
+
       def create_database_if_not_exist
         unless @connection.list_databases.any? { |db| db["name"] == @database }
           @connection.create_database(@database)
@@ -129,7 +157,7 @@ module Embulk
 
       def target_columns
         schema.reject do |col|
-          col.name == @timestamp_column || @ignore_columns.include?(col.name)
+          col.name == @timestamp_column.name || @ignore_columns.include?(col.name)
         end
       end
 
