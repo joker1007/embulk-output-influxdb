@@ -52,6 +52,10 @@ module Embulk
       #  return next_config_diff
       #end
 
+      def self.replaced_measurements
+        @replaced_measurements ||= {}
+      end
+
       def init
         # initialization code:
         @database = task["database"]
@@ -66,7 +70,6 @@ module Embulk
         @ignore_columns = task["ignore_columns"]
         @time_precision = task["time_precision"]
         @replace = task["mode"].downcase == "replace"
-        @replaced_measurements = {}
         @default_timezone = task["default_timezone"]
 
         @connection = InfluxDB::Client.new(@database,
@@ -131,9 +134,9 @@ module Embulk
       end
 
       def drop_measurement_if_exist(series)
-        if @replace && @replaced_measurements[series].nil? && find_measurement(series)
+        if @replace && self.class.replaced_measurements[series].nil? && find_measurement(series)
           Embulk.logger.info { "embulk-output-influxdb: Drop measurement #{series} from #{@database}" }
-          @replaced_measurements[series] = true
+          self.class.replaced_measurements[series] = true
           @connection.query("DROP MEASUREMENT #{series}")
         end
       end
