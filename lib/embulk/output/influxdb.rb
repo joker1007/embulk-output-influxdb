@@ -20,6 +20,7 @@ module Embulk
           "series_per_column" => config.param("series_per_column", :bool, default: false),
           "timestamp_column" => config.param("timestamp_column", :string, default: nil),
           "ignore_columns" => config.param("ignore_columns", :array, default: []),
+          "tag_columns" => config.param("tag_columns", :array, default: []),
           "default_timezone" => config.param("default_timezone", :string, default: "UTC"),
           "mode" => config.param("mode", :string, default: "insert"),
           "use_ssl" => config.param("use_ssl", :bool, default: false),
@@ -62,8 +63,10 @@ module Embulk
         @database = task["database"]
         @series = task["series"]
         @series_per_column = task["series_per_column"]
-        unless @series || @series_per_column
-          raise "Need series or series_per_column parameter"
+        @tag_columns = task["tag_columns"]
+        unless @series
+          raise "Need series or series_per_column parameter" unless @series_per_column
+          raise "Need series parameter when you specify tag_columns" unless @tag_columns.empty?
         end
         if task["timestamp_column"]
           @timestamp_column = schema.find { |col| col.name == task["timestamp_column"] }
@@ -111,7 +114,10 @@ module Embulk
           payload = {
             series: series,
             values: Hash[
-              target_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
+              target_value_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
+            ],
+            tags: Hash[
+              target_tag_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
             ],
           }
           payload[:timestamp] = convert_timezone(record[@timestamp_column.index]).to_i if @timestamp_column
@@ -165,6 +171,18 @@ module Embulk
       def target_columns
         schema.reject do |col|
           col.name == @timestamp_column.name || @ignore_columns.include?(col.name)
+        end
+      end
+
+      def target_value_columns
+        target_columns.reject do |col|
+          @tag_columns.include?(col.name)
+        end
+      end
+
+      def target_tag_columns
+        target_columns.select do |col|
+          @tag_columns.include?(col.name)
         end
       end
 

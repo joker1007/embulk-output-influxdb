@@ -8,14 +8,16 @@ in:
       - {name: key_name, type: string}
       - {name: day, type: timestamp, format: '%Y-%m-%d'}
       - {name: new_clients, type: long}
+      - {name: name, type: string}
 
 out:
   type: influxdb
   username: root
   password: root
   database: dbname
-  # series: ${key_name}_series
-  series_per_column: true
+  series: ${key_name}_series
+  # series_per_column: true
+  tag_columns: [name]
   timestamp_column: day
   mode: replace
   ignore_columns:
