@@ -1,7 +1,7 @@
 
 Gem::Specification.new do |spec|
   spec.name          = "embulk-output-influxdb"
-  spec.version       = "0.1.0"
+  spec.version       = "0.1.1"
   spec.authors       = ["joker1007"]
   spec.summary       = "InfluxDB output plugin for Embulk"
   spec.description   = "Dumps records to InfluxDB."
