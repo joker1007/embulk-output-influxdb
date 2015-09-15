@@ -19,7 +19,7 @@
 - **series**:    series name (string, required) (can use column value placeholder. see example)
 - **mode**:     "insert", or "replace". See bellow. (string, default: insert)
 - **timestamp_column**: timestamp column (string, default: nil)
-- **ignore_columns**: ignore column names (array[string], default: nil)
+- **ignore_columns**: ignore column names (array[string], default: [])
 - **default_timezone**: default timezone for column (string, default: 'UTC')
 
 ### Modes
