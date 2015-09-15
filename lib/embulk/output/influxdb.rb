@@ -10,8 +10,8 @@ module Embulk
       def self.transaction(config, schema, count, &control)
         # configuration code:
         task = {
-          "host" => config.param("host", :string, default: "localhost"),
-          "hosts" => config.param("hosts", :array, default: "localhost"),
+          "host" => config.param("host", :string, default: nil),
+          "hosts" => config.param("hosts", :array, default: nil),
           "port" => config.param("port", :integer, default: 8086),
           "username" => config.param("username", :string, default: "root"),
           "password" => config.param("password", :string, default: "root"),
@@ -58,6 +58,7 @@ module Embulk
 
       def init
         # initialization code:
+        task["hosts"] ||= Array(task["host"] || "localhost")
         @database = task["database"]
         @series = task["series"]
         @series_per_column = task["series_per_column"]
@@ -142,7 +143,10 @@ module Embulk
       end
 
       def find_measurement(series)
-        @connection.query("SHOW MEASUREMENTS")[0]["values"].find { |v| v["name"] == series }
+        result = @connection.query("SHOW MEASUREMENTS")[0]
+        if result
+          result["values"].find { |v| v["name"] == series }
+        end
       end
 
       def create_database_if_not_exist
