@@ -20,6 +20,7 @@
 - **mode**:     "insert", or "replace". See bellow. (string, default: insert)
 - **timestamp_column**: timestamp column (string, default: nil)
 - **ignore_columns**: ignore column names (array[string], default: [])
+- **tag_columns**: tag column names (array[string], default: [])
 - **default_timezone**: default timezone for column (string, default: 'UTC')
 
 ### Modes
@@ -38,6 +39,7 @@ out:
   password: root
   database: dbname
   series: ${key_name}_series
+  tag_columns: [name]
   timestamp_column: day
   mode: replace
   ignore_columns:
@@ -45,7 +47,6 @@ out:
 ```
 
 ## ToDo
-- tags support
 - column_options support
 
 ## Build
