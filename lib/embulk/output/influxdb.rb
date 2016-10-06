@@ -120,7 +120,7 @@ module Embulk
               target_tag_columns.map { |col| [col.name, convert_timezone(record[col.index])] }
             ],
           }
-          payload[:timestamp] = convert_timezone(record[@timestamp_column.index]).to_i if @timestamp_column
+          payload[:timestamp] = unixtime(convert_timezone(record[@timestamp_column.index])) if @timestamp_column
           payload
         end
       end
@@ -134,7 +134,7 @@ module Embulk
               series: series,
               values: {value: record[col.index]},
             }
-            payload[:timestamp] = convert_timezone(record[@timestamp_column.index]).to_i if @timestamp_column
+            payload[:timestamp] = unixtime(convert_timezone(record[@timestamp_column.index])) if @timestamp_column
             payload
           end
         end
@@ -191,6 +191,14 @@ module Embulk
 
         timezone = Timezone::Zone.new(zone: @default_timezone)
         timezone.time(value)
+      end
+
+      def unixtime(time)
+        if @time_precision == 'u'
+          format("%d%06d", time.to_i, time.usec).to_i
+        else
+          time.to_i
+        end
       end
     end
   end

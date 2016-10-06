@@ -22,6 +22,7 @@
 - **ignore_columns**: ignore column names (array[string], default: [])
 - **tag_columns**: tag column names (array[string], default: [])
 - **default_timezone**: default timezone for column (string, default: 'UTC')
+- **time_precision**: time precision (string, default: 's')
 
 ### Modes
 
