@@ -189,7 +189,7 @@ module Embulk
       def convert_timezone(value)
         return value unless value.is_a?(Time)
 
-        timezone = Timezone::Zone.new(zone: @default_timezone)
+        timezone = Timezone::Zone.new(@default_timezone)
         timezone.time(value)
       end
 

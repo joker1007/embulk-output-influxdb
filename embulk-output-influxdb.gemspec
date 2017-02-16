@@ -19,5 +19,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'tapp'
 
   spec.add_runtime_dependency 'influxdb', ['~> 0.2']
-  spec.add_runtime_dependency 'timezone'
+  spec.add_runtime_dependency 'timezone', ['~> 1.0']
 end
